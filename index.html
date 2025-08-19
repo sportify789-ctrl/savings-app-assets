@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>โครงการออมเก่งเหล่าประชา</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;700&display=swap');
+    :root {
+      --primary-color: #4a90e2; --success-color: #28a745; --danger-color: #dc3545;
+      --light-color: #f8f9fa; --dark-color: #343a40; --font-family: 'Kanit', sans-serif;
+      --level-bronze: #cd7f32; --level-silver: #c0c0c0; --level-gold: #ffd700;
+    }
+    .level-badge {
+      padding: 0.2em 0.5em;
+      border-radius: 6px;
+      color: white;
+      font-weight: 500;
+      font-size: 0.9em;
+      margin-left: 0.5rem;
+      text-shadow: 1px 1px 1px rgba(0,0,0,0.1);
+    }
+    .level-bronze { background-color: var(--level-bronze); }
+    .level-silver { background-color: var(--level-silver); }
+    .level-gold { background-color: var(--level-gold); }
+    body {
+      font-family: var(--font-family); background-color: var(--light-color); margin: 0;
+      display: flex; justify-content: center; align-items: flex-start;
+      min-height: 100vh; color: var(--dark-color); padding: 2rem 1rem; box-sizing: border-box;
+    }
+    .container { width: 100%; max-width: 800px; }
+    .card {
+      background: white; border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      padding: 2rem; margin-top: 1rem;
+    }
+    .header {
+      text-align: center; margin-bottom: 2rem; display: flex;
+      justify-content: center; align-items: center; gap: 0.5rem;
+    }
+    .header h1 { color: var(--primary-color); margin: 0; font-size: 1.8rem; }
+    .hidden { display: none !important; }
+    .status-message { text-align: center; margin-top: 1rem; font-weight: 500; }
+    .form-group { margin-bottom: 1.2rem; }
+    label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #555; }
+    input[type="text"], input[type="password"], input[type="number"], input[type="date"], select {
+      width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px;
+      box-sizing: border-box; font-family: var(--font-family); font-size: 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2); outline: none;
+    }
+    .btn {
+      width: 100%; padding: 0.8rem; border: none; border-radius: 8px; color: white;
+      font-size: 1rem; font-family: var(--font-family); font-weight: 500;
+      cursor: pointer; transition: background-color 0.3s, transform 0.1s;
+      display: inline-flex; justify-content: center; align-items: center; gap: 0.5rem;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background-color: var(--primary-color); }
+    .btn-success { background-color: var(--success-color); }
+    .btn-danger { background-color: var(--danger-color); }
+    .btn-logout { background-color: var(--danger-color); width: auto; padding: 0.5rem 1rem; font-size: 0.9rem; }
+    .app-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1rem; padding: 0 0.5rem;
+    }
+    .dashboard {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem; margin-bottom: 2rem;
+    }
+    .summary-card {
+      background-color: #fff; border: 1px solid #e9ecef; border-radius: 8px;
+      padding: 1.2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .summary-card h4 {
+      margin-top: 0; border-bottom: 1px solid #eee;
+      padding-bottom: 0.5rem; font-weight: 500;
+    }
+    .summary-card p { margin: 0.5rem 0; display: flex; justify-content: space-between; font-size: 0.95rem; }
+    .summary-card span { font-weight: 500; }
+    .balance-card {
+      background: linear-gradient(45deg, var(--primary-color), #0056b3); color: white;
+      text-align: center; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;
+    }
+    .balance-card h3 { margin: 0; font-size: 1.2rem; font-weight: 400; opacity: 0.9; }
+    .balance-card .amount { font-size: 2.5rem; font-weight: 700; margin: 0.5rem 0; }
+    .transaction-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .transaction-table th, .transaction-table td { padding: 0.8rem; text-align: left; border-bottom: 1px solid #eee; }
+    .transaction-table .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; width: auto; }
+    .text-success { color: var(--success-color); }
+    .text-danger { color: var(--danger-color); }
+    .loader {
+      border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color);
+      border-radius: 50%; width: 30px; height: 30px;
+      animation: spin 1s linear infinite; margin: 20px auto;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>💰 โครงการออมเก่งเหล่าประชา</h1></div>
+
+    <div id="login-container" class="card">
+      <h2>เข้าสู่ระบบ</h2>
+      <p style="font-size: 0.9rem; color: #555;">หากเป็นการใช้งานครั้งแรก หรือถูกรีเซ็ตรหัสผ่าน ให้เว้นว่างช่องรหัสผ่าน</p>
+      <form id="login-form">
+        <div class="form-group"><label for="username">รหัสนักเรียน / Admin</label><input type="text" id="username" required></div>
+        <div class="form-group"><label for="password">รหัสผ่าน</label><input type="password" id="password"></div>
+        <button type="submit" class="btn btn-primary">เข้าสู่ระบบ</button>
+        <div id="login-loader" class="loader hidden"></div>
+        <p id="login-error" class="status-message" style="color:red;"></p>
+      </form>
+    </div>
+
+    <div id="set-password-container" class="card hidden">
+      <h2>ตั้งรหัสผ่าน</h2>
+      <p>กรุณาตั้งรหัสผ่านใหม่เพื่อความปลอดภัยในการใช้งานครั้งต่อไป</p>
+      <form id="set-password-form">
+        <div class="form-group"><label for="new-password">รหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร)</label><input type="password" id="new-password" required minlength="4"></div>
+        <div class="form-group"><label for="confirm-password">ยืนยันรหัสผ่านใหม่</label><input type="password" id="confirm-password" required></div>
+        <button type="submit" class="btn btn-primary">ยืนยันและบันทึก</button>
+        <p id="password-error" class="status-message" style="color:red;"></p>
+      </form>
+    </div>
+
+    <div id="app-container" class="hidden">
+      <div class="app-header">
+        <div id="welcome-message"></div>
+        <button id="logout-btn" class="btn btn-logout">ออกจากระบบ</button>
+      </div>
+      <div id="admin-view" class="hidden">
+        <h3>ภาพรวมระบบ</h3>
+        <div id="admin-dashboard" class="dashboard"><div class="loader"></div></div>
+
+        <div class="card">
+          <h2><i class="fas fa-receipt"></i> รายการฝากล่าสุด (20 รายการ)</h2>
+          <div id="recent-deposits-loader" class="loader"></div>
+          <div id="recent-deposits-container"></div>
+        </div>
+
+        <div class="card">
+          <h3><i class="fas fa-file-export"></i> ส่งออกรายงาน</h3>
+          <button id="export-excel-btn" class="btn btn-success"><i class="fas fa-file-excel"></i> ส่งออกเป็น Excel (ประวัติทั้งหมด)</button>
+          <button id="export-pdf-btn" class="btn btn-danger" style="margin-top: 1rem;"><i class="fas fa-file-pdf"></i> ส่งออกเป็น PDF (สรุปผล)</button>
+          <p id="export-status" class="status-message"></p>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-users"></i> บันทึกธุรกรรมหลายรายการ (Bulk)</h2>
+            <form id="bulk-transaction-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="bulk-transaction-date">วันที่ทำรายการ (สำหรับทุกแถว)</label>
+                        <input type="date" id="bulk-transaction-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bulk-transaction-type">ประเภทรายการ (สำหรับทุกแถว)</label>
+                        <select id="bulk-transaction-type">
+                            <option value="ฝาก">ฝากเงิน</option>
+                            <option value="ถอน">ถอนเงิน</option>
+                        </select>
+                    </div>
+                </div>
+                <table class="transaction-table">
+                    <thead>
+                        <tr>
+                            <th>รหัสนักเรียน</th>
+                            <th>จำนวนเงิน</th>
+                            <th>หมายเหตุ</th>
+                            <th style="width: 50px;">ลบ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bulk-transaction-body"></tbody>
+                </table>
+                <button type="button" id="add-row-btn" class="btn" style="background-color: #6c757d; margin-top: 1rem; width: auto; padding: 0.5rem 1rem;">+ เพิ่มแถว</button>
+                <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid #eee;">
+                <button type="submit" class="btn btn-primary">บันทึกข้อมูลทั้งหมด</button>
+                <p id="admin-bulk-status" class="status-message"></p>
+            </form>
+        </div>
+
+        <div class="card">
+          <h2><i class="fas fa-history"></i> ดูประวัติธุรกรรมนักเรียน</h2>
+          <form id="admin-search-tx-form">
+            <div class="form-group">
+              <label for="admin-search-student-id">รหัสนักเรียน</label>
+              <input type="text" id="admin-search-student-id" required>
+            </div>
+            <button type="submit" class="btn btn-primary">ค้นหา</button>
+          </form>
+          <div id="admin-tx-loader" class="loader hidden"></div>
+          <p id="admin-search-status" class="status-message"></p>
+          <div id="admin-tx-results"></div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fas fa-tasks"></i> จัดการธุรกรรม (รายคน)</h2>
+          <form id="add-transaction-form">
+            <div class="form-group"><label for="student-id">รหัสนักเรียน</label><input type="text" id="student-id" required></div>
+            <div class="form-group"><label for="transaction-date">วันที่ทำรายการ</label><input type="date" id="transaction-date" required></div>
+            <div class="form-group"><label for="transaction-type">ประเภทรายการ</label><select id="transaction-type"><option value="ฝาก">ฝากเงิน</option><option value="ถอน">ถอนเงิน</option></select></div>
+            <div class="form-group"><label for="amount">จำนวนเงิน</label><input type="number" id="amount" step="0.01" required></div>
+            <div class="form-group"><label for="note">หมายเหตุ</label><input type="text" id="note" placeholder="เช่น ฝากประจำสัปดาห์"></div>
+            <button type="submit" class="btn btn-success">บันทึกรายการ</button>
+            <p id="admin-add-status" class="status-message"></p>
+          </form>
+          <hr style="margin: 2.5rem 0; border: 0; border-top: 1px solid #eee;">
+          <h2><i class="fas fa-key"></i> รีเซ็ตรหัสผ่านนักเรียน</h2>
+          <form id="reset-password-form">
+            <div class="form-group"><label for="reset-student-id">รหัสนักเรียนที่ต้องการรีเซ็ต</label><input type="text" id="reset-student-id" required></div>
+            <button type="submit" class="btn btn-danger">รีเซ็ตรหัสผ่าน</button>
+            <p id="admin-reset-status" class="status-message"></p>
+          </form>
+        </div>
+      </div>
+      <div id="student-view" class="hidden">
+         <div class="balance-card">
+            <h3>ยอดเงินคงเหลือ</h3><p class="amount" id="student-balance">฿0.00</p>
+            <div id="student-level-info" style="margin-top: 1rem;">
+              <span id="student-level-display">ระดับของคุณ: <strong></strong></span>
+            </div>
+         </div>
+
+         <div id="rewards-card" class="card">
+            <h3><i class="fas fa-trophy"></i> รับรางวัลประจำระดับ</h3>
+            <p id="rewards-info">คุณสามารถรับรางวัลได้เมื่อถึงระดับที่กำหนด</p>
+            <button id="claim-reward-btn" class="btn btn-success" disabled>รับรางวัล</button>
+            <p id="claim-status" class="status-message"></p>
+         </div>
+
+         <h3>สรุปผลของคุณ</h3>
+         <div id="student-dashboard" class="dashboard"><div class="loader"></div></div>
+         <div class="card">
+            <h3>ประวัติการทำธุรกรรม</h3>
+            <div id="student-transactions-loader" class="loader"></div>
+            <table class="transaction-table">
+               <thead><tr><th>วันที่</th><th>รายการ</th><th>จำนวนเงิน</th><th>หมายเหตุ</th></tr></thead>
+               <tbody id="student-transactions"></tbody>
+            </table>
+         </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SCRIPT_URL = "<?= url ?>";
+    let currentLoggedInUser = null;
+    const allViews = ['login-container', 'set-password-container', 'app-container'];
+    const loginForm = document.getElementById('login-form');
+    const setPasswordForm = document.getElementById('set-password-form');
+    const addTransactionForm = document.getElementById('add-transaction-form');
+    const resetPasswordForm = document.getElementById('reset-password-form');
+    const logoutBtn = document.getElementById('logout-btn');
+    const exportExcelBtn = document.getElementById('export-excel-btn');
+    const exportPdfBtn = document.getElementById('export-pdf-btn');
+    const bulkTransactionForm = document.getElementById('bulk-transaction-form');
+    const addRowBtn = document.getElementById('add-row-btn');
+    const claimRewardBtn = document.getElementById('claim-reward-btn');
+    const adminSearchTxForm = document.getElementById('admin-search-tx-form');
+
+    function showView(viewId) {
+      allViews.forEach(id => document.getElementById(id).classList.add('hidden'));
+      document.getElementById(viewId).classList.remove('hidden');
+    }
+
+    function onLoginSuccess(user) {
+      currentLoggedInUser = user;
+      if (user.status === 'new_user' || user.status === 'pending_reset') {
+        showView('set-password-container');
+      } else {
+        showView('app-container');
+        document.getElementById('welcome-message').innerHTML = `สวัสดี, <strong>${user.name}</strong>`;
+        if (user.role === 'admin') {
+          document.getElementById('student-view').classList.add('hidden');
+          document.getElementById('admin-view').classList.remove('hidden');
+          document.getElementById('transaction-date').valueAsDate = new Date();
+          document.getElementById('bulk-transaction-date').valueAsDate = new Date();
+          google.script.run.withSuccessHandler(populateAdminDashboard).getAdminDashboardData();
+          google.script.run.withSuccessHandler(populateRecentDeposits).getRecentDeposits();
+        } else {
+          document.getElementById('admin-view').classList.add('hidden');
+          document.getElementById('student-view').classList.remove('hidden');
+          populateStudentView(user);
+        }
+      }
+    }
+
+    function handleLogin(event) {
+      event.preventDefault();
+      const statusP = document.getElementById('login-error');
+      const loader = document.getElementById('login-loader');
+      statusP.textContent = '';
+      loader.classList.remove('hidden');
+      event.target.querySelector('button').classList.add('hidden');
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      google.script.run.withSuccessHandler(onLoginSuccess).withFailureHandler(error => {
+        statusP.textContent = error.message;
+        loader.classList.add('hidden');
+        event.target.querySelector('button').classList.remove('hidden');
+      }).getUserData(username, password);
+    }
+
+    function handleSetNewPassword(event) {
+        event.preventDefault();
+        const newPassword = document.getElementById('new-password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+        const errorP = document.getElementById('password-error');
+        const button = event.target.querySelector('button');
+        errorP.textContent = '';
+        if (newPassword !== confirmPassword) {
+            errorP.textContent = 'รหัสผ่านทั้งสองช่องไม่ตรงกัน'; return;
+        }
+        button.disabled = true; button.textContent = 'กำลังบันทึก...';
+        google.script.run.withSuccessHandler(response => {
+            alert(response.message + "\nกรุณาเข้าสู่ระบบอีกครั้ง");
+            window.top.location.href = SCRIPT_URL;
+        }).withFailureHandler(error => {
+            errorP.textContent = error.message;
+            button.disabled = false; button.textContent = 'ยืนยันและบันทึก';
+        }).setNewPassword(currentLoggedInUser.id, newPassword);
+    }
+
+    function handleLogout() { window.top.location.href = SCRIPT_URL; }
+
+    function handleAddTransaction(event) {
+        event.preventDefault();
+        const statusP = document.getElementById('admin-add-status');
+        statusP.textContent = "กำลังบันทึก...";
+        statusP.style.color = 'black';
+        const transactionDate = document.getElementById('transaction-date').value;
+        google.script.run.withSuccessHandler(response => {
+            statusP.textContent = response.message;
+            statusP.style.color = 'green';
+            event.target.reset();
+            document.getElementById('transaction-date').valueAsDate = new Date();
+            google.script.run.withSuccessHandler(populateAdminDashboard).getAdminDashboardData();
+        }).withFailureHandler(error => {
+            statusP.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
+            statusP.style.color = 'red';
+        }).addTransaction(
+            document.getElementById('student-id').value,
+            document.getElementById('transaction-type').value,
+            parseFloat(document.getElementById('amount').value),
+            document.getElementById('note').value,
+            transactionDate
+        );
+    }
+
+    function handleAdminResetPassword(event) {
+        event.preventDefault();
+        const studentIdToReset = document.getElementById('reset-student-id').value;
+        const statusP = document.getElementById('admin-reset-status');
+        if (!confirm(`คุณต้องการรีเซ็ตรหัสผ่านของนักเรียนรหัส ${studentIdToReset} ใช่หรือไม่?`)) return;
+        statusP.textContent = "กำลังดำเนินการ..."; statusP.style.color = 'black';
+        google.script.run.withSuccessHandler(response => {
+            statusP.textContent = response.message;
+            statusP.style.color = 'green';
+            event.target.reset();
+        }).withFailureHandler(error => {
+            statusP.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
+            statusP.style.color = 'red';
+        }).adminResetPassword(studentIdToReset);
+    }
+
+    function handleExportExcel() {
+      const statusP = document.getElementById('export-status');
+      statusP.textContent = 'กำลังสร้างไฟล์ Excel...';
+      statusP.style.color = 'black';
+      exportExcelBtn.disabled = true; exportPdfBtn.disabled = true;
+      google.script.run
+        .withSuccessHandler(result => {
+          statusP.textContent = 'สร้างไฟล์ Excel สำเร็จ!';
+          statusP.style.color = 'green';
+          const link = document.createElement("a");
+          link.href = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + result.fileData;
+          link.download = result.fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          exportExcelBtn.disabled = false; exportPdfBtn.disabled = false;
+        })
+        .withFailureHandler(err => {
+          statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
+          statusP.style.color = 'red';
+          exportExcelBtn.disabled = false; exportPdfBtn.disabled = false;
+        })
+        .exportTransactionsAsExcel();
+    }
+
+    function handleExportPdf() {
+      const statusP = document.getElementById('export-status');
+      statusP.textContent = 'กำลังสร้างไฟล์ PDF...';
+      statusP.style.color = 'black';
+      exportExcelBtn.disabled = true; exportPdfBtn.disabled = true;
+      google.script.run
+        .withSuccessHandler(result => {
+          statusP.textContent = 'สร้างไฟล์ PDF สำเร็จ!';
+          statusP.style.color = 'green';
+          const link = document.createElement("a");
+          link.href = "data:application/pdf;base64," + result.pdfData;
+          link.download = result.fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          exportExcelBtn.disabled = false; exportPdfBtn.disabled = false;
+        })
+        .withFailureHandler(err => {
+          statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
+          statusP.style.color = 'red';
+          exportExcelBtn.disabled = false; exportPdfBtn.disabled = false;
+        })
+        .exportSummaryAsPdf();
+    }
+
+    function handleAddRow() {
+      const tbody = document.getElementById('bulk-transaction-body');
+      const newRow = tbody.insertRow();
+      newRow.innerHTML = `
+        <td><input type="text" class="bulk-student-id" placeholder="รหัสนักเรียน" required></td>
+        <td><input type="number" class="bulk-amount" placeholder="จำนวนเงิน" step="0.01" required></td>
+        <td><input type="text" class="bulk-note" placeholder="หมายเหตุ (ถ้ามี)"></td>
+        <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove();">ลบ</button></td>
+      `;
+    }
+
+    function handleBulkSubmit(event) {
+      event.preventDefault();
+      const statusP = document.getElementById('admin-bulk-status');
+      statusP.textContent = "กำลังบันทึกข้อมูลทั้งหมด...";
+      statusP.style.color = 'black';
+      const transactionDate = document.getElementById('bulk-transaction-date').value;
+      const transactionType = document.getElementById('bulk-transaction-type').value;
+      const rows = document.querySelectorAll('#bulk-transaction-body tr');
+      const transactionsArray = [];
+      rows.forEach(row => {
+        const studentId = row.querySelector('.bulk-student-id').value;
+        const amount = parseFloat(row.querySelector('.bulk-amount').value);
+        const note = row.querySelector('.bulk-note').value;
+        if (studentId && !isNaN(amount) && amount > 0) {
+          transactionsArray.push({ studentId, amount, note });
+        }
+      });
+      if (transactionsArray.length === 0) {
+        statusP.textContent = 'กรุณาเพิ่มรายการธุรกรรมอย่างน้อย 1 รายการ';
+        statusP.style.color = 'red';
+        return;
+      }
+      google.script.run
+        .withSuccessHandler(response => {
+          statusP.textContent = response.message;
+          statusP.style.color = 'green';
+          document.getElementById('bulk-transaction-body').innerHTML = '';
+          google.script.run.withSuccessHandler(populateAdminDashboard).getAdminDashboardData();
+        })
+        .withFailureHandler(err => {
+          statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
+          statusP.style.color = 'red';
+        })
+        .addMultipleTransactions(transactionDate, transactionType, transactionsArray);
+    }
+
+    function populateStudentView(user) {
+        document.getElementById('student-balance').textContent = parseFloat(user.balance).toLocaleString('th-TH', { style: 'currency', currency: 'THB' });
+
+        const levelDisplay = document.getElementById('student-level-display');
+        const levelName = user.level || 'ยังไม่มีระดับ';
+        let levelBadgeHTML = '';
+        if (levelName === 'Bronze') {
+          levelBadgeHTML = '🥉 <span class="level-badge level-bronze">Bronze</span>';
+        } else if (levelName === 'Silver') {
+          levelBadgeHTML = '🥈 <span class="level-badge level-silver">Silver</span>';
+        } else if (levelName === 'Gold') {
+          levelBadgeHTML = '🥇 <span class="level-badge level-gold">Gold</span>';
+        }
+        levelDisplay.innerHTML = `ระดับของคุณ: <strong>${levelName}</strong> ${levelBadgeHTML}`;
+
+        // Rewards Logic
+        const claimStatus = document.getElementById('claim-status');
+        const rewardsInfo = document.getElementById('rewards-info');
+        claimStatus.textContent = '';
+        const eligibleLevels = ['Bronze', 'Silver', 'Gold'];
+        // Check if the current level is eligible and has NOT been claimed yet.
+        const canClaim = eligibleLevels.includes(user.level) && (!user.rewards || !user.rewards.includes(user.level));
+
+        if (canClaim) {
+          claimRewardBtn.disabled = false;
+          claimRewardBtn.textContent = `รับรางวัลระดับ ${user.level}`;
+          rewardsInfo.textContent = `ยินดีด้วย! คุณมีสิทธิ์รับรางวัลระดับ ${user.level}`;
+        } else {
+          claimRewardBtn.disabled = true;
+          if (user.level !== 'ยังไม่มีระดับ') {
+            claimRewardBtn.textContent = `รับรางวัลแล้ว`;
+            rewardsInfo.textContent = `คุณได้รับรางวัลสำหรับระดับ ${user.level} แล้ว หรือรอเลื่อนระดับถัดไป`;
+          } else {
+            claimRewardBtn.textContent = `ยังไม่มีสิทธิ์รับรางวัล`;
+            rewardsInfo.textContent = `คุณต้องไปให้ถึงระดับ Bronze ก่อนเพื่อรับรางวัล`;
+          }
+        }
+
+        google.script.run.withSuccessHandler(populateStudentDashboard).getStudentDashboardData(user.id);
+        const txLoader = document.getElementById('student-transactions-loader');
+        const txTbody = document.getElementById('student-transactions');
+        txLoader.classList.remove('hidden'); txTbody.innerHTML = '';
+        google.script.run.withSuccessHandler(transactions => {
+            txLoader.classList.add('hidden');
+            if (transactions.length === 0) {
+                txTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">ไม่พบประวัติการทำธุรกรรม</td></tr>'; return;
+            }
+            transactions.forEach(tx => {
+                const row = txTbody.insertRow();
+                const amountClass = tx.type === 'ฝาก' ? 'text-success' : 'text-danger';
+                const amountSign = tx.type === 'ฝาก' ? '+' : '-';
+                row.innerHTML = `<td>${tx.date}</td><td>${tx.type}</td><td class="${amountClass}">${amountSign}${parseFloat(tx.amount).toLocaleString('th-TH',{minimumFractionDigits:2})}</td><td>${tx.note || ''}</td>`;
+            });
+        }).getTransactions(user.id);
+    }
+
+    function handleClaimReward() {
+      const statusP = document.getElementById('claim-status');
+      statusP.textContent = 'กำลังดำเนินการ...';
+      statusP.style.color = 'black';
+      claimRewardBtn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(response => {
+          statusP.textContent = response.message;
+          statusP.style.color = 'green';
+          // Refresh user data to update view by simulating a re-login without showing the form
+           google.script.run.withSuccessHandler(onLoginSuccess).withFailureHandler(err => {
+              statusP.textContent = `เกิดข้อผิดพลาดในการรีเฟรชข้อมูล: ${err.message}`;
+           }).getUserData(currentLoggedInUser.id, document.getElementById('password').value);
+        })
+        .withFailureHandler(err => {
+          statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
+          statusP.style.color = 'red';
+          claimRewardBtn.disabled = false;
+        })
+        .claimReward(currentLoggedInUser.id);
+    }
+
+    function populateAdminDashboard(data) {
+        const dashboard = document.getElementById('admin-dashboard');
+        const format = (num) => num.toLocaleString('th-TH');
+        dashboard.innerHTML = `
+            <div class="summary-card"><h4>วันนี้</h4>
+                <p>ยอดฝาก: <span class="text-success">+${format(data.daily.deposits)}</span></p>
+                <p>ยอดถอน: <span class="text-danger">-${format(data.daily.withdrawals)}</span></p>
+                <p>จำนวนรายการ: <span>${format(data.daily.count)}</span></p>
+            </div>
+            <div class="summary-card"><h4>สัปดาห์นี้</h4>
+                <p>ยอดฝาก: <span class="text-success">+${format(data.weekly.deposits)}</span></p>
+                <p>ยอดถอน: <span class="text-danger">-${format(data.weekly.withdrawals)}</span></p>
+                <p>จำนวนรายการ: <span>${format(data.weekly.count)}</span></p>
+            </div>
+            <div class="summary-card"><h4>เดือนนี้</h4>
+                <p>ยอดฝาก: <span class="text-success">+${format(data.monthly.deposits)}</span></p>
+                <p>ยอดถอน: <span class="text-danger">-${format(data.monthly.withdrawals)}</span></p>
+                <p>จำนวนรายการ: <span>${format(data.monthly.count)}</span></p>
+            </div>`;
+    }
+
+    function populateStudentDashboard(data) {
+        const dashboard = document.getElementById('student-dashboard');
+        const format = (num) => num.toLocaleString('th-TH', {minimumFractionDigits: 2});
+        dashboard.innerHTML = `
+            <div class="summary-card"><h4>วันนี้</h4>
+                <p>ฝาก: <span class="text-success">+${format(data.daily.deposits)}</span></p>
+                <p>ถอน: <span class="text-danger">-${format(data.daily.withdrawals)}</span></p>
+            </div>
+            <div class="summary-card"><h4>สัปดาห์นี้</h4>
+                <p>ฝาก: <span class="text-success">+${format(data.weekly.deposits)}</span></p>
+                <p>ถอน: <span class="text-danger">-${format(data.weekly.withdrawals)}</span></p>
+            </div>
+            <div class="summary-card"><h4>เดือนนี้</h4>
+                <p>ฝาก: <span class="text-success">+${format(data.monthly.deposits)}</span></p>
+                <p>ถอน: <span class="text-danger">-${format(data.monthly.withdrawals)}</span></p>
+            </div>`;
+    }
+
+    loginForm.addEventListener('submit', handleLogin);
+    setPasswordForm.addEventListener('submit', handleSetNewPassword);
+    addTransactionForm.addEventListener('submit', handleAddTransaction);
+    resetPasswordForm.addEventListener('submit', handleAdminResetPassword);
+    logoutBtn.addEventListener('click', handleLogout);
+    exportExcelBtn.addEventListener('click', handleExportExcel);
+    exportPdfBtn.addEventListener('click', handleExportPdf);
+    addRowBtn.addEventListener('click', handleAddRow);
+    function populateRecentDeposits(deposits) {
+      const container = document.getElementById('recent-deposits-container');
+      const loader = document.getElementById('recent-deposits-loader');
+      loader.classList.add('hidden');
+
+      if (!deposits || deposits.length === 0) {
+        container.innerHTML = '<p>ไม่พบข้อมูลการฝากล่าสุด</p>';
+        return;
+      }
+
+      let tableHTML = '<table class="transaction-table"><thead><tr><th>วันที่</th><th>ชื่อนักเรียน</th><th>จำนวนเงิน</th><th>หมายเหตุ</th></tr></thead><tbody>';
+      deposits.forEach(tx => {
+        tableHTML += `<tr>
+          <td>${tx.date}</td>
+          <td>${tx.studentName} (${tx.studentId})</td>
+          <td class="text-success">+${parseFloat(tx.amount).toLocaleString('th-TH',{minimumFractionDigits:2})}</td>
+          <td>${tx.note || ''}</td>
+        </tr>`;
+      });
+      tableHTML += '</tbody></table>';
+      container.innerHTML = tableHTML;
+    }
+
+    function handleAdminSearchTransactions(event) {
+      event.preventDefault();
+      const studentId = document.getElementById('admin-search-student-id').value;
+      const loader = document.getElementById('admin-tx-loader');
+      const statusP = document.getElementById('admin-search-status');
+      const resultsDiv = document.getElementById('admin-tx-results');
+
+      loader.classList.remove('hidden');
+      statusP.textContent = '';
+      resultsDiv.innerHTML = '';
+
+      google.script.run
+        .withSuccessHandler(transactions => {
+          loader.classList.add('hidden');
+          if (transactions.length === 0) {
+            statusP.textContent = 'ไม่พบประวัติการทำธุรกรรมสำหรับรหัสนักเรียนนี้';
+            return;
+          }
+
+          let tableHTML = '<table class="transaction-table"><thead><tr><th>วันที่</th><th>รายการ</th><th>จำนวนเงิน</th><th>หมายเหตุ</th></tr></thead><tbody>';
+          transactions.forEach(tx => {
+            const amountClass = tx.type === 'ฝาก' ? 'text-success' : 'text-danger';
+            const amountSign = tx.type === 'ฝาก' ? '+' : '-';
+            tableHTML += `<tr>
+              <td>${tx.date}</td>
+              <td>${tx.type}</td>
+              <td class="${amountClass}">${amountSign}${parseFloat(tx.amount).toLocaleString('th-TH',{minimumFractionDigits:2})}</td>
+              <td>${tx.note || ''}</td>
+            </tr>`;
+          });
+          tableHTML += '</tbody></table>';
+          resultsDiv.innerHTML = tableHTML;
+        })
+        .withFailureHandler(err => {
+          loader.classList.add('hidden');
+          statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
+          statusP.style.color = 'red';
+        })
+        .getTransactions(studentId);
+    }
+
+    bulkTransactionForm.addEventListener('submit', handleBulkSubmit);
+    claimRewardBtn.addEventListener('click', handleClaimReward);
+    adminSearchTxForm.addEventListener('submit', handleAdminSearchTransactions);
+  </script>
+</body>
+</html>
