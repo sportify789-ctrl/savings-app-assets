@@ -225,6 +225,14 @@
           </form>
         </div>
       </div>
+        <div class="card" style="border: 2px solid var(--danger-color);">
+          <h2 style="color: var(--danger-color);"><i class="fas fa-exclamation-triangle"></i> โซนอันตราย (Danger Zone)</h2>
+          <p>การดำเนินการในส่วนนี้จะส่งผลกระทบต่อข้อมูลทั้งระบบ โปรดใช้ด้วยความระมัดระวัง</p>
+          <button id="start-semester-btn" class="btn btn-danger">เริ่มต้นภาคเรียนใหม่</button>
+          <p style="font-size: 0.9rem; color: #555; margin-top: 1rem;">การกดปุ่มนี้จะทำการรีเซ็ต "ระดับ" และ "ของรางวัล" ของนักเรียนทั้งหมด และตั้งค่าวันที่เริ่มต้นเทอมเป็นวันปัจจุบัน</p>
+          <p id="start-semester-status" class="status-message"></p>
+        </div>
+      </div>
       <div id="student-view" class="hidden">
          <div class="balance-card">
             <h3>ยอดเงินคงเหลือ</h3><p class="amount" id="student-balance">฿0.00</p>
@@ -269,6 +277,7 @@
     const addRowBtn = document.getElementById('add-row-btn');
     const claimRewardBtn = document.getElementById('claim-reward-btn');
     const adminSearchTxForm = document.getElementById('admin-search-tx-form');
+    const startSemesterBtn = document.getElementById('start-semester-btn');
 
     function showView(viewId) {
       allViews.forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -662,9 +671,37 @@
         .getTransactions(studentId);
     }
 
+    function handleStartNewSemester() {
+      const confirmation = prompt('คำเตือน! การกระทำนี้จะรีเซ็ตระดับและของรางวัลทั้งหมด และไม่สามารถย้อนกลับได้ หากคุณแน่ใจ พิมพ์ "CONFIRM" แล้วกด OK');
+      if (confirmation !== 'CONFIRM') {
+        alert('การดำเนินการถูกยกเลิก');
+        return;
+      }
+
+      const statusP = document.getElementById('start-semester-status');
+      statusP.textContent = 'กำลังเริ่มต้นภาคเรียนใหม่...';
+      statusP.style.color = 'black';
+      startSemesterBtn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(response => {
+          statusP.textContent = response.message;
+          statusP.style.color = 'green';
+          alert(response.message);
+          startSemesterBtn.disabled = false;
+        })
+        .withFailureHandler(err => {
+          statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
+          statusP.style.color = 'red';
+          startSemesterBtn.disabled = false;
+        })
+        .startNewSemester();
+    }
+
     bulkTransactionForm.addEventListener('submit', handleBulkSubmit);
     claimRewardBtn.addEventListener('click', handleClaimReward);
     adminSearchTxForm.addEventListener('submit', handleAdminSearchTransactions);
+    startSemesterBtn.addEventListener('click', handleStartNewSemester);
   </script>
 </body>
 </html>

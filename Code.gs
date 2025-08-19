@@ -111,6 +111,44 @@ function adminResetPassword(studentId) {
 }
 
 /**
+ * Resets all student levels and rewards, and sets the semester start date to today.
+ * This is a destructive action and should be used with care.
+ */
+function startNewSemester() {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const usersSheet = ss.getSheetByName('Users');
+    const settingsSheet = ss.getSheetByName('Settings');
+
+    if (!usersSheet || !settingsSheet) {
+      throw new Error("ไม่พบชีต Users หรือ Settings");
+    }
+
+    // Clear levels (column G) and rewards (column H) for all users except admins
+    const usersData = usersSheet.getDataRange().getValues();
+    for (let i = 1; i < usersData.length; i++) {
+      const role = usersData[i][3]; // Role is in column D
+      if (role !== 'admin') {
+        const userRowIndex = i + 1;
+        usersSheet.getRange(userRowIndex, 7).setValue(''); // Clear level
+        usersSheet.getRange(userRowIndex, 8).setValue(''); // Clear rewards
+      }
+    }
+
+    // Update SemesterStartDate to today's date
+    // Assumes SemesterStartDate is in B2
+    settingsSheet.getRange('B2').setValue(new Date());
+
+    SpreadsheetApp.flush();
+    return { success: true, message: "เริ่มต้นภาคเรียนใหม่สำเร็จ! ระบบได้รีเซ็ตระดับและของรางวัลของนักเรียนทั้งหมดแล้ว" };
+
+  } catch (e) {
+    Logger.log(`[CRITICAL ERROR] in startNewSemester: ${e.message}`);
+    throw new Error(`เกิดข้อผิดพลาดในการเริ่มต้นภาคเรียนใหม่: ${e.message}`);
+  }
+}
+
+/**
  * Retrieves all transactions for a specific student.
  */
 function getTransactions(studentId) {
@@ -139,13 +177,31 @@ function getTransactions(studentId) {
 function updateUserLevel(studentId, ss) {
   const usersSheet = ss.getSheetByName('Users');
   const transactionsSheet = ss.getSheetByName('Transactions');
-  if (!usersSheet || !transactionsSheet) return;
+  const settingsSheet = ss.getSheetByName('Settings');
+  if (!usersSheet || !transactionsSheet || !settingsSheet) {
+    Logger.log('Update Level failed: Missing required sheets.');
+    return;
+  }
+
+  let semesterStartDate;
+  try {
+    const dateValue = settingsSheet.getRange('B2').getValue();
+    semesterStartDate = new Date(dateValue);
+    if (isNaN(semesterStartDate.getTime())) throw new Error('Invalid date format');
+  } catch (e) {
+    Logger.log(`Could not read SemesterStartDate: ${e.message}. Defaulting to beginning of time.`);
+    semesterStartDate = new Date(0); // Default to a very old date if not set
+  }
 
   const txData = transactionsSheet.getDataRange().getValues();
   let depositCount = 0;
   let depositAmount = 0;
 
   for (let i = 1; i < txData.length; i++) {
+    const transactionDate = new Date(txData[i][1]);
+    // Only count transactions within the current semester
+    if (transactionDate < semesterStartDate) continue;
+
     // Check studentId in column C (index 2) and type in column D (index 3)
     if (txData[i][2].toString().trim() === studentId.toString().trim() && txData[i][3] === 'ฝาก') {
       depositCount++;
