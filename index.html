@@ -258,8 +258,8 @@
   </div>
 
   <script>
-    // 🔴 สำคัญ: แก้ไข URL นี้ให้เป็น "Web app URL" ที่ได้จากการ Deploy ใน Apps Script
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhiK9MhipmHmp6qBtHBut-K3j-ttw4HDnaccLRo0Say-vNKL9Kd8-s_E26DUpJoyH0/exec"; 
+    // URL ถูกอัปเดตเรียบร้อยแล้ว
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzTkVOHPTt_cLRyv7jC7_-4tVtqDWXKIvCyKxkfPOogU-5bQcjJ5gz8O7Qb-hZ0rei4/exec"; 
     
     let currentLoggedInUser = null;
 
@@ -283,12 +283,11 @@
       try {
         const response = await fetch(SCRIPT_URL, {
           method: 'POST',
-          // headers: { 'Content-Type': 'application/json' }, // This header is not needed and can cause issues with simple POST
           body: JSON.stringify({ action, payload }),
           redirect: 'follow' 
         });
         if (!response.ok) {
-            throw new Error(`Network response was not ok: ${response.statusText}`);
+            throw new Error(`Network response was not ok`);
         }
         const result = await response.json();
         if (!result.success) {
@@ -315,7 +314,7 @@
       const button = event.target.querySelector('button');
       statusP.textContent = '';
       loader.classList.remove('hidden');
-      button.classList.add('hidden');
+      button.disabled = true;
       
       try {
         const username = document.getElementById('username').value;
@@ -326,7 +325,7 @@
         statusP.textContent = error.message;
       } finally {
         loader.classList.add('hidden');
-        button.classList.remove('hidden');
+        button.disabled = false;
       }
     }
 
@@ -346,7 +345,7 @@
         try {
             const response = await callApi('setNewPassword', { userId: currentLoggedInUser.id, newPassword: newPassword });
             alert(response.message + "\nกรุณาเข้าสู่ระบบอีกครั้ง");
-            location.reload(true); // แก้ไข: รีโหลดหน้าเพื่อกลับไปหน้าล็อกอิน
+            location.reload(true);
         } catch (error) {
             errorP.textContent = error.message;
             button.disabled = false; button.textContent = 'ยืนยันและบันทึก';
@@ -355,7 +354,7 @@
     
     function handleLogout() { 
       currentLoggedInUser = null;
-      location.reload(true); // แก้ไข: รีโหลดหน้าเพื่อกลับไปหน้าล็อกอิน
+      location.reload(true);
     }
 
     async function handleAddTransaction(event) {
@@ -379,7 +378,7 @@
             event.target.reset();
             document.getElementById('transaction-date').valueAsDate = new Date();
             populateAdminDashboard();
-            populateRecentDeposits(); // เพิ่ม: อัปเดตรายการล่าสุด
+            populateRecentDeposits();
         } catch (error) {
             statusP.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
             statusP.style.color = 'red';
@@ -496,7 +495,7 @@
         statusP.style.color = 'green';
         document.getElementById('bulk-transaction-body').innerHTML = '';
         populateAdminDashboard();
-        populateRecentDeposits(); // เพิ่ม: อัปเดตรายการล่าสุด
+        populateRecentDeposits();
       } catch (err) {
         statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
         statusP.style.color = 'red';
@@ -591,7 +590,6 @@
         const response = await callApi('claimReward', { studentId: currentLoggedInUser.id });
         statusP.textContent = response.message;
         statusP.style.color = 'green';
-        // After claiming, we need to refresh the user data to get the new rewards status
         const updatedUser = await callApi('getUserData', { id: currentLoggedInUser.id, password: document.getElementById('password').value });
         onLoginSuccess(updatedUser);
       } catch(error) {
