@@ -34,21 +34,34 @@ function getUserData(id, password) {
       const userStatus = row[5].toString();
 
       if (userId.trim() === id.trim()) {
-        const userData = {
-          id: row[0],
-          name: row[2],
-          role: row[3],
-          balance: row[4],
-          status: row[5],
-          level: row[6] || 'ยังไม่มีระดับ', // Column G
-          rewards: row[7] || ''      // Column H
-        };
+        // Authenticate user first
+        const isNewUser = (userStatus === 'new_user' || userStatus === '') && userPassword === '' && password === '';
+        const isActiveUser = userPassword !== '' && userPassword === password;
 
-        if ((userStatus === 'new_user' || userStatus === '') && userPassword === '' && password === '') {
-          userData.status = 'new_user';
-          return userData;
-        }
-        if (userPassword !== '' && userPassword === password) {
+        if (isNewUser || isActiveUser) {
+          // If authenticated, update their level before fetching final data
+          // This ensures the level is always current on login.
+          if (row[3] !== 'admin') { // Don't run for admins
+             updateUserLevel(userId.trim(), ss);
+          }
+
+          // Re-fetch the specific user's row to get the updated level
+          const updatedRow = usersSheet.getRange(i + 1, 1, 1, usersSheet.getLastColumn()).getValues()[0];
+
+          const userData = {
+            id: updatedRow[0],
+            name: updatedRow[2],
+            role: updatedRow[3],
+            balance: updatedRow[4],
+            status: updatedRow[5],
+            level: updatedRow[6] || 'ยังไม่มีระดับ', // Column G
+            rewards: updatedRow[7] || ''      // Column H
+          };
+
+          if (isNewUser) {
+            userData.status = 'new_user';
+          }
+
           return userData;
         }
       }
@@ -92,8 +105,9 @@ function setNewPassword(userId, newPassword) {
 /**
  * Resets a student's password to a default value.
  */
-function adminResetPassword(studentId) {
+function adminResetPassword(adminId, studentId) {
   const ss = SpreadsheetApp.openById(SHEET_ID);
+  _ensureAdmin(adminId, ss);
   const usersSheet = ss.getSheetByName('Users');
   const data = usersSheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
@@ -114,9 +128,25 @@ function adminResetPassword(studentId) {
  * Resets all student levels and rewards, and sets the semester start date to today.
  * This is a destructive action and should be used with care.
  */
-function startNewSemester() {
+function _ensureAdmin(userId, ss) {
+  const usersSheet = ss.getSheetByName('Users');
+  const usersData = usersSheet.getDataRange().getValues();
+  for (let i = 1; i < usersData.length; i++) {
+    if (usersData[i][0].toString().trim() === userId.toString().trim()) {
+      if (usersData[i][3] === 'admin') {
+        return; // User is an admin, continue execution.
+      } else {
+        throw new Error('Permission denied. User is not an admin.');
+      }
+    }
+  }
+  throw new Error('Permission denied. User not found.');
+}
+
+function startNewSemester(adminId) {
   try {
     const ss = SpreadsheetApp.openById(SHEET_ID);
+    _ensureAdmin(adminId, ss); // Security check
     const usersSheet = ss.getSheetByName('Users');
     const settingsSheet = ss.getSheetByName('Settings');
 
@@ -278,9 +308,10 @@ function claimReward(studentId) {
 /**
  * Adds a new transaction with a specified date and updates the student's balance.
  */
-function addTransaction(studentId, type, amount, note, transactionDateString) {
+function addTransaction(adminId, studentId, type, amount, note, transactionDateString) {
   try {
     const ss = SpreadsheetApp.openById(SHEET_ID);
+    _ensureAdmin(adminId, ss);
     const usersSheet = ss.getSheetByName('Users');
     const transactionsSheet = ss.getSheetByName('Transactions');
     const userData = usersSheet.getDataRange().getValues();
@@ -442,10 +473,11 @@ function getStudentDashboardData(studentId) {
 /**
  * Creates a native Excel (.xlsx) file for direct download.
  */
-function exportTransactionsAsExcel() {
+function exportTransactionsAsExcel(adminId) {
   let tempSpreadsheet;
   try {
     const ss = SpreadsheetApp.openById(SHEET_ID);
+    _ensureAdmin(adminId, ss);
     const transactionsSheet = ss.getSheetByName('Transactions');
     const data = transactionsSheet.getDataRange().getValues();
 
@@ -482,9 +514,11 @@ function exportTransactionsAsExcel() {
 /**
  * Creates a PDF report of the admin summary dashboard.
  */
-function exportSummaryAsPdf() {
+function exportSummaryAsPdf(adminId) {
   let tempSpreadsheet;
   try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    _ensureAdmin(adminId, ss);
     const summaryData = getAdminDashboardData();
     const now = new Date();
     const thaiMonthName = now.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
@@ -532,9 +566,10 @@ function exportSummaryAsPdf() {
 /**
  * Adds multiple transactions at once and updates balances efficiently.
  */
-function addMultipleTransactions(dateString, type, transactions) {
+function addMultipleTransactions(adminId, dateString, type, transactions) {
   try {
     const ss = SpreadsheetApp.openById(SHEET_ID);
+    _ensureAdmin(adminId, ss);
     const usersSheet = ss.getSheetByName('Users');
     const transactionsSheet = ss.getSheetByName('Transactions');
 

@@ -360,6 +360,7 @@
             statusP.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
             statusP.style.color = 'red';
         }).addTransaction(
+            currentLoggedInUser.id,
             document.getElementById('student-id').value,
             document.getElementById('transaction-type').value,
             parseFloat(document.getElementById('amount').value),
@@ -381,7 +382,7 @@
         }).withFailureHandler(error => {
             statusP.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
             statusP.style.color = 'red';
-        }).adminResetPassword(studentIdToReset);
+        }).adminResetPassword(currentLoggedInUser.id, studentIdToReset);
     }
 
     function handleExportExcel() {
@@ -406,7 +407,7 @@
           statusP.style.color = 'red';
           exportExcelBtn.disabled = false; exportPdfBtn.disabled = false;
         })
-        .exportTransactionsAsExcel();
+        .exportTransactionsAsExcel(currentLoggedInUser.id);
     }
 
     function handleExportPdf() {
@@ -431,7 +432,7 @@
           statusP.style.color = 'red';
           exportExcelBtn.disabled = false; exportPdfBtn.disabled = false;
         })
-        .exportSummaryAsPdf();
+        .exportSummaryAsPdf(currentLoggedInUser.id);
     }
 
     function handleAddRow() {
@@ -478,7 +479,7 @@
           statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
           statusP.style.color = 'red';
         })
-        .addMultipleTransactions(transactionDate, transactionType, transactionsArray);
+        .addMultipleTransactions(currentLoggedInUser.id, transactionDate, transactionType, transactionsArray);
     }
 
     function populateStudentView(user) {
@@ -695,7 +696,7 @@
           statusP.style.color = 'red';
           startSemesterBtn.disabled = false;
         })
-        .startNewSemester();
+        .startNewSemester(currentLoggedInUser.id);
     }
 
     bulkTransactionForm.addEventListener('submit', handleBulkSubmit);
