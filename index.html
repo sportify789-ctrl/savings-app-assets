@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>โครงการออมเก่งเหล่าประชา</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-
+  
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;700&display=swap');
     :root {
@@ -14,12 +14,8 @@
       --level-bronze: #cd7f32; --level-silver: #c0c0c0; --level-gold: #ffd700;
     }
     .level-badge {
-      padding: 0.2em 0.5em;
-      border-radius: 6px;
-      color: white;
-      font-weight: 500;
-      font-size: 0.9em;
-      margin-left: 0.5rem;
+      padding: 0.2em 0.5em; border-radius: 6px; color: white;
+      font-weight: 500; font-size: 0.9em; margin-left: 0.5rem;
       text-shadow: 1px 1px 1px rgba(0,0,0,0.1);
     }
     .level-bronze { background-color: var(--level-bronze); }
@@ -123,7 +119,7 @@
         <p id="login-error" class="status-message" style="color:red;"></p>
       </form>
     </div>
-
+    
     <div id="set-password-container" class="card hidden">
       <h2>ตั้งรหัสผ่าน</h2>
       <p>กรุณาตั้งรหัสผ่านใหม่เพื่อความปลอดภัยในการใช้งานครั้งต่อไป</p>
@@ -149,7 +145,7 @@
           <div id="recent-deposits-loader" class="loader"></div>
           <div id="recent-deposits-container"></div>
         </div>
-
+        
         <div class="card">
           <h3><i class="fas fa-file-export"></i> ส่งออกรายงาน</h3>
           <button id="export-excel-btn" class="btn btn-success"><i class="fas fa-file-excel"></i> ส่งออกเป็น Excel (ประวัติทั้งหมด)</button>
@@ -253,8 +249,8 @@
             <h3>ประวัติการทำธุรกรรม</h3>
             <div id="student-transactions-loader" class="loader"></div>
             <table class="transaction-table">
-               <thead><tr><th>วันที่</th><th>รายการ</th><th>จำนวนเงิน</th><th>หมายเหตุ</th></tr></thead>
-               <tbody id="student-transactions"></tbody>
+                <thead><tr><th>วันที่</th><th>รายการ</th><th>จำนวนเงิน</th><th>หมายเหตุ</th></tr></thead>
+                <tbody id="student-transactions"></tbody>
             </table>
          </div>
       </div>
@@ -262,8 +258,12 @@
   </div>
 
   <script>
-    const SCRIPT_URL = "<?= url ?>";
+    // 🔴 สำคัญ: แก้ไข URL นี้ให้เป็น "Web app URL" ที่ได้จากการ Deploy ใน Apps Script
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyt5Gy2hJk-WU-A2sBjqziKDvRr-hFOwKZkBA8t7SA0DCopSbbdc3luvpKytHTwIdJU/exec"; 
+    
     let currentLoggedInUser = null;
+
+    // --- DOM Elements ---
     const allViews = ['login-container', 'set-password-container', 'app-container'];
     const loginForm = document.getElementById('login-form');
     const setPasswordForm = document.getElementById('set-password-form');
@@ -278,11 +278,232 @@
     const adminSearchTxForm = document.getElementById('admin-search-tx-form');
     const startSemesterBtn = document.getElementById('start-semester-btn');
 
+    // --- API Helper ---
+    async function callApi(action, payload = {}) {
+      try {
+        const response = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          // headers: { 'Content-Type': 'application/json' }, // This header is not needed and can cause issues with simple POST
+          body: JSON.stringify({ action, payload }),
+          redirect: 'follow' 
+        });
+        if (!response.ok) {
+            throw new Error(`Network response was not ok: ${response.statusText}`);
+        }
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.error || 'Unknown server error');
+        }
+        return result.data;
+      } catch (error) {
+        console.error('API Call Error:', error);
+        throw error;
+      }
+    }
+
+    // --- View Management ---
     function showView(viewId) {
       allViews.forEach(id => document.getElementById(id).classList.add('hidden'));
       document.getElementById(viewId).classList.remove('hidden');
     }
 
+    // --- Event Handlers ---
+    async function handleLogin(event) {
+      event.preventDefault();
+      const statusP = document.getElementById('login-error');
+      const loader = document.getElementById('login-loader');
+      const button = event.target.querySelector('button');
+      statusP.textContent = '';
+      loader.classList.remove('hidden');
+      button.classList.add('hidden');
+      
+      try {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const user = await callApi('getUserData', { id: username, password: password });
+        onLoginSuccess(user);
+      } catch (error) {
+        statusP.textContent = error.message;
+      } finally {
+        loader.classList.add('hidden');
+        button.classList.remove('hidden');
+      }
+    }
+
+    async function handleSetNewPassword(event) {
+        event.preventDefault();
+        const newPassword = document.getElementById('new-password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+        const errorP = document.getElementById('password-error');
+        const button = event.target.querySelector('button');
+        errorP.textContent = '';
+
+        if (newPassword !== confirmPassword) {
+            errorP.textContent = 'รหัสผ่านทั้งสองช่องไม่ตรงกัน'; return;
+        }
+        button.disabled = true; button.textContent = 'กำลังบันทึก...';
+
+        try {
+            const response = await callApi('setNewPassword', { userId: currentLoggedInUser.id, newPassword: newPassword });
+            alert(response.message + "\nกรุณาเข้าสู่ระบบอีกครั้ง");
+            location.reload(true); // แก้ไข: รีโหลดหน้าเพื่อกลับไปหน้าล็อกอิน
+        } catch (error) {
+            errorP.textContent = error.message;
+            button.disabled = false; button.textContent = 'ยืนยันและบันทึก';
+        }
+    }
+    
+    function handleLogout() { 
+      currentLoggedInUser = null;
+      location.reload(true); // แก้ไข: รีโหลดหน้าเพื่อกลับไปหน้าล็อกอิน
+    }
+
+    async function handleAddTransaction(event) {
+        event.preventDefault();
+        const statusP = document.getElementById('admin-add-status');
+        statusP.textContent = "กำลังบันทึก...";
+        statusP.style.color = 'black';
+        
+        try {
+            const payload = {
+                adminId: currentLoggedInUser.id,
+                studentId: document.getElementById('student-id').value,
+                type: document.getElementById('transaction-type').value,
+                amount: parseFloat(document.getElementById('amount').value),
+                note: document.getElementById('note').value,
+                transactionDateString: document.getElementById('transaction-date').value
+            };
+            const response = await callApi('addTransaction', payload);
+            statusP.textContent = response.message;
+            statusP.style.color = 'green';
+            event.target.reset();
+            document.getElementById('transaction-date').valueAsDate = new Date();
+            populateAdminDashboard();
+            populateRecentDeposits(); // เพิ่ม: อัปเดตรายการล่าสุด
+        } catch (error) {
+            statusP.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
+            statusP.style.color = 'red';
+        }
+    }
+
+    async function handleAdminResetPassword(event) {
+        event.preventDefault();
+        const studentIdToReset = document.getElementById('reset-student-id').value;
+        if (!studentIdToReset) return;
+        const statusP = document.getElementById('admin-reset-status');
+        
+        if (!confirm(`คุณต้องการรีเซ็ตรหัสผ่านของนักเรียนรหัส ${studentIdToReset} ใช่หรือไม่?`)) return;
+        statusP.textContent = "กำลังดำเนินการ..."; statusP.style.color = 'black';
+        
+        try {
+            const response = await callApi('adminResetPassword', { adminId: currentLoggedInUser.id, studentId: studentIdToReset });
+            statusP.textContent = response.message;
+            statusP.style.color = 'green';
+            event.target.reset();
+        } catch (error) {
+            statusP.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
+            statusP.style.color = 'red';
+        }
+    }
+
+    function downloadFile(base64Data, fileName, mimeType) {
+        const link = document.createElement("a");
+        link.href = `data:${mimeType};base64,${base64Data}`;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    async function handleExportExcel() {
+      const statusP = document.getElementById('export-status');
+      statusP.textContent = 'กำลังสร้างไฟล์ Excel...';
+      statusP.style.color = 'black';
+      exportExcelBtn.disabled = true; exportPdfBtn.disabled = true;
+      try {
+        const result = await callApi('exportTransactionsAsExcel', { adminId: currentLoggedInUser.id });
+        statusP.textContent = 'สร้างไฟล์ Excel สำเร็จ!';
+        statusP.style.color = 'green';
+        downloadFile(result.fileData, result.fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      } catch (err) {
+        statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
+        statusP.style.color = 'red';
+      } finally {
+        exportExcelBtn.disabled = false; exportPdfBtn.disabled = false;
+      }
+    }
+
+    async function handleExportPdf() {
+      const statusP = document.getElementById('export-status');
+      statusP.textContent = 'กำลังสร้างไฟล์ PDF...';
+      statusP.style.color = 'black';
+      exportExcelBtn.disabled = true; exportPdfBtn.disabled = true;
+      try {
+        const result = await callApi('exportSummaryAsPdf', { adminId: currentLoggedInUser.id });
+        statusP.textContent = 'สร้างไฟล์ PDF สำเร็จ!';
+        statusP.style.color = 'green';
+        downloadFile(result.pdfData, result.fileName, 'application/pdf');
+      } catch (err) {
+        statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
+        statusP.style.color = 'red';
+      } finally {
+        exportExcelBtn.disabled = false; exportPdfBtn.disabled = false;
+      }
+    }
+    
+    function handleAddRow() {
+      const tbody = document.getElementById('bulk-transaction-body');
+      const newRow = tbody.insertRow();
+      newRow.innerHTML = `
+        <td><input type="text" class="bulk-student-id" placeholder="รหัสนักเรียน" required></td>
+        <td><input type="number" class="bulk-amount" placeholder="จำนวนเงิน" step="0.01" required></td>
+        <td><input type="text" class="bulk-note" placeholder="หมายเหตุ (ถ้ามี)"></td>
+        <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove();">ลบ</button></td>
+      `;
+    }
+
+    async function handleBulkSubmit(event) {
+      event.preventDefault();
+      const statusP = document.getElementById('admin-bulk-status');
+      statusP.textContent = "กำลังบันทึกข้อมูลทั้งหมด...";
+      statusP.style.color = 'black';
+      
+      const transactionsArray = [];
+      document.querySelectorAll('#bulk-transaction-body tr').forEach(row => {
+        const studentId = row.querySelector('.bulk-student-id').value;
+        const amount = parseFloat(row.querySelector('.bulk-amount').value);
+        const note = row.querySelector('.bulk-note').value;
+        if (studentId && !isNaN(amount) && amount > 0) {
+          transactionsArray.push({ studentId, amount, note });
+        }
+      });
+
+      if (transactionsArray.length === 0) {
+        statusP.textContent = 'กรุณาเพิ่มรายการธุรกรรมอย่างน้อย 1 รายการ';
+        statusP.style.color = 'red';
+        return;
+      }
+      
+      try {
+        const payload = {
+          adminId: currentLoggedInUser.id,
+          dateString: document.getElementById('bulk-transaction-date').value,
+          type: document.getElementById('bulk-transaction-type').value,
+          transactions: transactionsArray
+        };
+        const response = await callApi('addMultipleTransactions', payload);
+        statusP.textContent = response.message;
+        statusP.style.color = 'green';
+        document.getElementById('bulk-transaction-body').innerHTML = '';
+        populateAdminDashboard();
+        populateRecentDeposits(); // เพิ่ม: อัปเดตรายการล่าสุด
+      } catch (err) {
+        statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
+        statusP.style.color = 'red';
+      }
+    }
+
+    // --- Data Population & View Updates ---
     function onLoginSuccess(user) {
       currentLoggedInUser = user;
       if (user.status === 'new_user' || user.status === 'pending_reset') {
@@ -295,8 +516,8 @@
           document.getElementById('admin-view').classList.remove('hidden');
           document.getElementById('transaction-date').valueAsDate = new Date();
           document.getElementById('bulk-transaction-date').valueAsDate = new Date();
-          google.script.run.withSuccessHandler(populateAdminDashboard).getAdminDashboardData();
-          google.script.run.withSuccessHandler(populateRecentDeposits).getRecentDeposits();
+          populateAdminDashboard();
+          populateRecentDeposits();
         } else {
           document.getElementById('admin-view').classList.add('hidden');
           document.getElementById('student-view').classList.remove('hidden');
@@ -305,203 +526,21 @@
       }
     }
 
-    function handleLogin(event) {
-      event.preventDefault();
-      const statusP = document.getElementById('login-error');
-      const loader = document.getElementById('login-loader');
-      statusP.textContent = '';
-      loader.classList.remove('hidden');
-      event.target.querySelector('button').classList.add('hidden');
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
-      google.script.run.withSuccessHandler(onLoginSuccess).withFailureHandler(error => {
-        statusP.textContent = error.message;
-        loader.classList.add('hidden');
-        event.target.querySelector('button').classList.remove('hidden');
-      }).getUserData(username, password);
-    }
-
-    function handleSetNewPassword(event) {
-        event.preventDefault();
-        const newPassword = document.getElementById('new-password').value;
-        const confirmPassword = document.getElementById('confirm-password').value;
-        const errorP = document.getElementById('password-error');
-        const button = event.target.querySelector('button');
-        errorP.textContent = '';
-        if (newPassword !== confirmPassword) {
-            errorP.textContent = 'รหัสผ่านทั้งสองช่องไม่ตรงกัน'; return;
-        }
-        button.disabled = true; button.textContent = 'กำลังบันทึก...';
-        google.script.run.withSuccessHandler(response => {
-            alert(response.message + "\nกรุณาเข้าสู่ระบบอีกครั้ง");
-            window.top.location.href = SCRIPT_URL;
-        }).withFailureHandler(error => {
-            errorP.textContent = error.message;
-            button.disabled = false; button.textContent = 'ยืนยันและบันทึก';
-        }).setNewPassword(currentLoggedInUser.id, newPassword);
-    }
-
-    function handleLogout() { window.top.location.href = SCRIPT_URL; }
-
-    function handleAddTransaction(event) {
-        event.preventDefault();
-        const statusP = document.getElementById('admin-add-status');
-        statusP.textContent = "กำลังบันทึก...";
-        statusP.style.color = 'black';
-        const transactionDate = document.getElementById('transaction-date').value;
-        google.script.run.withSuccessHandler(response => {
-            statusP.textContent = response.message;
-            statusP.style.color = 'green';
-            event.target.reset();
-            document.getElementById('transaction-date').valueAsDate = new Date();
-            google.script.run.withSuccessHandler(populateAdminDashboard).getAdminDashboardData();
-        }).withFailureHandler(error => {
-            statusP.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
-            statusP.style.color = 'red';
-        }).addTransaction(
-            currentLoggedInUser.id,
-            document.getElementById('student-id').value,
-            document.getElementById('transaction-type').value,
-            parseFloat(document.getElementById('amount').value),
-            document.getElementById('note').value,
-            transactionDate
-        );
-    }
-
-    function handleAdminResetPassword(event) {
-        event.preventDefault();
-        const studentIdToReset = document.getElementById('reset-student-id').value;
-        const statusP = document.getElementById('admin-reset-status');
-        if (!confirm(`คุณต้องการรีเซ็ตรหัสผ่านของนักเรียนรหัส ${studentIdToReset} ใช่หรือไม่?`)) return;
-        statusP.textContent = "กำลังดำเนินการ..."; statusP.style.color = 'black';
-        google.script.run.withSuccessHandler(response => {
-            statusP.textContent = response.message;
-            statusP.style.color = 'green';
-            event.target.reset();
-        }).withFailureHandler(error => {
-            statusP.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
-            statusP.style.color = 'red';
-        }).adminResetPassword(currentLoggedInUser.id, studentIdToReset);
-    }
-
-    function handleExportExcel() {
-      const statusP = document.getElementById('export-status');
-      statusP.textContent = 'กำลังสร้างไฟล์ Excel...';
-      statusP.style.color = 'black';
-      exportExcelBtn.disabled = true; exportPdfBtn.disabled = true;
-      google.script.run
-        .withSuccessHandler(result => {
-          statusP.textContent = 'สร้างไฟล์ Excel สำเร็จ!';
-          statusP.style.color = 'green';
-          const link = document.createElement("a");
-          link.href = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + result.fileData;
-          link.download = result.fileName;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          exportExcelBtn.disabled = false; exportPdfBtn.disabled = false;
-        })
-        .withFailureHandler(err => {
-          statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
-          statusP.style.color = 'red';
-          exportExcelBtn.disabled = false; exportPdfBtn.disabled = false;
-        })
-        .exportTransactionsAsExcel(currentLoggedInUser.id);
-    }
-
-    function handleExportPdf() {
-      const statusP = document.getElementById('export-status');
-      statusP.textContent = 'กำลังสร้างไฟล์ PDF...';
-      statusP.style.color = 'black';
-      exportExcelBtn.disabled = true; exportPdfBtn.disabled = true;
-      google.script.run
-        .withSuccessHandler(result => {
-          statusP.textContent = 'สร้างไฟล์ PDF สำเร็จ!';
-          statusP.style.color = 'green';
-          const link = document.createElement("a");
-          link.href = "data:application/pdf;base64," + result.pdfData;
-          link.download = result.fileName;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          exportExcelBtn.disabled = false; exportPdfBtn.disabled = false;
-        })
-        .withFailureHandler(err => {
-          statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
-          statusP.style.color = 'red';
-          exportExcelBtn.disabled = false; exportPdfBtn.disabled = false;
-        })
-        .exportSummaryAsPdf(currentLoggedInUser.id);
-    }
-
-    function handleAddRow() {
-      const tbody = document.getElementById('bulk-transaction-body');
-      const newRow = tbody.insertRow();
-      newRow.innerHTML = `
-        <td><input type="text" class="bulk-student-id" placeholder="รหัสนักเรียน" required></td>
-        <td><input type="number" class="bulk-amount" placeholder="จำนวนเงิน" step="0.01" required></td>
-        <td><input type="text" class="bulk-note" placeholder="หมายเหตุ (ถ้ามี)"></td>
-        <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove();">ลบ</button></td>
-      `;
-    }
-
-    function handleBulkSubmit(event) {
-      event.preventDefault();
-      const statusP = document.getElementById('admin-bulk-status');
-      statusP.textContent = "กำลังบันทึกข้อมูลทั้งหมด...";
-      statusP.style.color = 'black';
-      const transactionDate = document.getElementById('bulk-transaction-date').value;
-      const transactionType = document.getElementById('bulk-transaction-type').value;
-      const rows = document.querySelectorAll('#bulk-transaction-body tr');
-      const transactionsArray = [];
-      rows.forEach(row => {
-        const studentId = row.querySelector('.bulk-student-id').value;
-        const amount = parseFloat(row.querySelector('.bulk-amount').value);
-        const note = row.querySelector('.bulk-note').value;
-        if (studentId && !isNaN(amount) && amount > 0) {
-          transactionsArray.push({ studentId, amount, note });
-        }
-      });
-      if (transactionsArray.length === 0) {
-        statusP.textContent = 'กรุณาเพิ่มรายการธุรกรรมอย่างน้อย 1 รายการ';
-        statusP.style.color = 'red';
-        return;
-      }
-      google.script.run
-        .withSuccessHandler(response => {
-          statusP.textContent = response.message;
-          statusP.style.color = 'green';
-          document.getElementById('bulk-transaction-body').innerHTML = '';
-          google.script.run.withSuccessHandler(populateAdminDashboard).getAdminDashboardData();
-        })
-        .withFailureHandler(err => {
-          statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
-          statusP.style.color = 'red';
-        })
-        .addMultipleTransactions(currentLoggedInUser.id, transactionDate, transactionType, transactionsArray);
-    }
-
-    function populateStudentView(user) {
+    async function populateStudentView(user) {
         document.getElementById('student-balance').textContent = parseFloat(user.balance).toLocaleString('th-TH', { style: 'currency', currency: 'THB' });
-
+        
         const levelDisplay = document.getElementById('student-level-display');
         const levelName = user.level || 'ยังไม่มีระดับ';
         let levelBadgeHTML = '';
-        if (levelName === 'Bronze') {
-          levelBadgeHTML = '🥉 <span class="level-badge level-bronze">Bronze</span>';
-        } else if (levelName === 'Silver') {
-          levelBadgeHTML = '🥈 <span class="level-badge level-silver">Silver</span>';
-        } else if (levelName === 'Gold') {
-          levelBadgeHTML = '🥇 <span class="level-badge level-gold">Gold</span>';
-        }
+        if (levelName === 'Bronze') levelBadgeHTML = '🥉 <span class="level-badge level-bronze">Bronze</span>';
+        else if (levelName === 'Silver') levelBadgeHTML = '🥈 <span class="level-badge level-silver">Silver</span>';
+        else if (levelName === 'Gold') levelBadgeHTML = '🥇 <span class="level-badge level-gold">Gold</span>';
         levelDisplay.innerHTML = `ระดับของคุณ: <strong>${levelName}</strong> ${levelBadgeHTML}`;
 
-        // Rewards Logic
         const claimStatus = document.getElementById('claim-status');
         const rewardsInfo = document.getElementById('rewards-info');
         claimStatus.textContent = '';
         const eligibleLevels = ['Bronze', 'Silver', 'Gold'];
-        // Check if the current level is eligible and has NOT been claimed yet.
         const canClaim = eligibleLevels.includes(user.level) && (!user.rewards || !user.rewards.includes(user.level));
 
         if (canClaim) {
@@ -518,119 +557,104 @@
             rewardsInfo.textContent = `คุณต้องไปให้ถึงระดับ Bronze ก่อนเพื่อรับรางวัล`;
           }
         }
-
-        google.script.run.withSuccessHandler(populateStudentDashboard).getStudentDashboardData(user.id);
+        
+        populateStudentDashboard(user.id);
         const txLoader = document.getElementById('student-transactions-loader');
         const txTbody = document.getElementById('student-transactions');
         txLoader.classList.remove('hidden'); txTbody.innerHTML = '';
-        google.script.run.withSuccessHandler(transactions => {
+        
+        try {
+            const transactions = await callApi('getTransactions', { studentId: user.id });
             txLoader.classList.add('hidden');
             if (transactions.length === 0) {
                 txTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">ไม่พบประวัติการทำธุรกรรม</td></tr>'; return;
             }
+            let rowsHTML = '';
             transactions.forEach(tx => {
-                const row = txTbody.insertRow();
                 const amountClass = tx.type === 'ฝาก' ? 'text-success' : 'text-danger';
                 const amountSign = tx.type === 'ฝาก' ? '+' : '-';
-                row.innerHTML = `<td>${tx.date}</td><td>${tx.type}</td><td class="${amountClass}">${amountSign}${parseFloat(tx.amount).toLocaleString('th-TH',{minimumFractionDigits:2})}</td><td>${tx.note || ''}</td>`;
+                rowsHTML += `<tr><td>${tx.date}</td><td>${tx.type}</td><td class="${amountClass}">${amountSign}${parseFloat(tx.amount).toLocaleString('th-TH',{minimumFractionDigits:2})}</td><td>${tx.note || ''}</td></tr>`;
             });
-        }).getTransactions(user.id);
+            txTbody.innerHTML = rowsHTML;
+        } catch (error) {
+            txTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
+        }
     }
 
-    function handleClaimReward() {
+    async function handleClaimReward() {
       const statusP = document.getElementById('claim-status');
       statusP.textContent = 'กำลังดำเนินการ...';
       statusP.style.color = 'black';
       claimRewardBtn.disabled = true;
 
-      google.script.run
-        .withSuccessHandler(response => {
-          statusP.textContent = response.message;
-          statusP.style.color = 'green';
-          // Refresh user data to update view by simulating a re-login without showing the form
-           google.script.run.withSuccessHandler(onLoginSuccess).withFailureHandler(err => {
-              statusP.textContent = `เกิดข้อผิดพลาดในการรีเฟรชข้อมูล: ${err.message}`;
-           }).getUserData(currentLoggedInUser.id, document.getElementById('password').value);
-        })
-        .withFailureHandler(err => {
-          statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
-          statusP.style.color = 'red';
-          claimRewardBtn.disabled = false;
-        })
-        .claimReward(currentLoggedInUser.id);
+      try {
+        const response = await callApi('claimReward', { studentId: currentLoggedInUser.id });
+        statusP.textContent = response.message;
+        statusP.style.color = 'green';
+        // After claiming, we need to refresh the user data to get the new rewards status
+        const updatedUser = await callApi('getUserData', { id: currentLoggedInUser.id, password: document.getElementById('password').value });
+        onLoginSuccess(updatedUser);
+      } catch(error) {
+        statusP.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
+        statusP.style.color = 'red';
+        claimRewardBtn.disabled = false;
+      }
     }
 
-    function populateAdminDashboard(data) {
+    async function populateAdminDashboard() {
         const dashboard = document.getElementById('admin-dashboard');
-        const format = (num) => num.toLocaleString('th-TH');
-        dashboard.innerHTML = `
-            <div class="summary-card"><h4>วันนี้</h4>
-                <p>ยอดฝาก: <span class="text-success">+${format(data.daily.deposits)}</span></p>
-                <p>ยอดถอน: <span class="text-danger">-${format(data.daily.withdrawals)}</span></p>
-                <p>จำนวนรายการ: <span>${format(data.daily.count)}</span></p>
-            </div>
-            <div class="summary-card"><h4>สัปดาห์นี้</h4>
-                <p>ยอดฝาก: <span class="text-success">+${format(data.weekly.deposits)}</span></p>
-                <p>ยอดถอน: <span class="text-danger">-${format(data.weekly.withdrawals)}</span></p>
-                <p>จำนวนรายการ: <span>${format(data.weekly.count)}</span></p>
-            </div>
-            <div class="summary-card"><h4>เดือนนี้</h4>
-                <p>ยอดฝาก: <span class="text-success">+${format(data.monthly.deposits)}</span></p>
-                <p>ยอดถอน: <span class="text-danger">-${format(data.monthly.withdrawals)}</span></p>
-                <p>จำนวนรายการ: <span>${format(data.monthly.count)}</span></p>
-            </div>`;
+        try {
+            const data = await callApi('getAdminDashboardData');
+            const format = (num) => num.toLocaleString('th-TH');
+            dashboard.innerHTML = `
+                <div class="summary-card"><h4>วันนี้</h4><p>ยอดฝาก: <span class="text-success">+${format(data.daily.deposits)}</span></p><p>ยอดถอน: <span class="text-danger">-${format(data.daily.withdrawals)}</span></p><p>จำนวนรายการ: <span>${format(data.daily.count)}</span></p></div>
+                <div class="summary-card"><h4>สัปดาห์นี้</h4><p>ยอดฝาก: <span class="text-success">+${format(data.weekly.deposits)}</span></p><p>ยอดถอน: <span class="text-danger">-${format(data.weekly.withdrawals)}</span></p><p>จำนวนรายการ: <span>${format(data.weekly.count)}</span></p></div>
+                <div class="summary-card"><h4>เดือนนี้</h4><p>ยอดฝาก: <span class="text-success">+${format(data.monthly.deposits)}</span></p><p>ยอดถอน: <span class="text-danger">-${format(data.monthly.withdrawals)}</span></p><p>จำนวนรายการ: <span>${format(data.monthly.count)}</span></p></div>`;
+        } catch (error) {
+            dashboard.innerHTML = `<p style="color:red">โหลดข้อมูลภาพรวมไม่สำเร็จ: ${error.message}</p>`;
+        }
     }
 
-    function populateStudentDashboard(data) {
+    async function populateStudentDashboard(studentId) {
         const dashboard = document.getElementById('student-dashboard');
-        const format = (num) => num.toLocaleString('th-TH', {minimumFractionDigits: 2});
-        dashboard.innerHTML = `
-            <div class="summary-card"><h4>วันนี้</h4>
-                <p>ฝาก: <span class="text-success">+${format(data.daily.deposits)}</span></p>
-                <p>ถอน: <span class="text-danger">-${format(data.daily.withdrawals)}</span></p>
-            </div>
-            <div class="summary-card"><h4>สัปดาห์นี้</h4>
-                <p>ฝาก: <span class="text-success">+${format(data.weekly.deposits)}</span></p>
-                <p>ถอน: <span class="text-danger">-${format(data.weekly.withdrawals)}</span></p>
-            </div>
-            <div class="summary-card"><h4>เดือนนี้</h4>
-                <p>ฝาก: <span class="text-success">+${format(data.monthly.deposits)}</span></p>
-                <p>ถอน: <span class="text-danger">-${format(data.monthly.withdrawals)}</span></p>
-            </div>`;
+        dashboard.innerHTML = '<div class="loader"></div>';
+        try {
+            const data = await callApi('getStudentDashboardData', { studentId });
+            const format = (num) => num.toLocaleString('th-TH', {minimumFractionDigits: 2});
+            dashboard.innerHTML = `
+                <div class="summary-card"><h4>วันนี้</h4><p>ฝาก: <span class="text-success">+${format(data.daily.deposits)}</span></p><p>ถอน: <span class="text-danger">-${format(data.daily.withdrawals)}</span></p></div>
+                <div class="summary-card"><h4>สัปดาห์นี้</h4><p>ฝาก: <span class="text-success">+${format(data.weekly.deposits)}</span></p><p>ถอน: <span class="text-danger">-${format(data.weekly.withdrawals)}</span></p></div>
+                <div class="summary-card"><h4>เดือนนี้</h4><p>ฝาก: <span class="text-success">+${format(data.monthly.deposits)}</span></p><p>ถอน: <span class="text-danger">-${format(data.monthly.withdrawals)}</span></p></div>`;
+        } catch (error) {
+            dashboard.innerHTML = `<p style="color:red">โหลดข้อมูลสรุปไม่สำเร็จ: ${error.message}</p>`;
+        }
     }
 
-    loginForm.addEventListener('submit', handleLogin);
-    setPasswordForm.addEventListener('submit', handleSetNewPassword);
-    addTransactionForm.addEventListener('submit', handleAddTransaction);
-    resetPasswordForm.addEventListener('submit', handleAdminResetPassword);
-    logoutBtn.addEventListener('click', handleLogout);
-    exportExcelBtn.addEventListener('click', handleExportExcel);
-    exportPdfBtn.addEventListener('click', handleExportPdf);
-    addRowBtn.addEventListener('click', handleAddRow);
-    function populateRecentDeposits(deposits) {
+    async function populateRecentDeposits() {
       const container = document.getElementById('recent-deposits-container');
       const loader = document.getElementById('recent-deposits-loader');
-      loader.classList.add('hidden');
-
-      if (!deposits || deposits.length === 0) {
-        container.innerHTML = '<p>ไม่พบข้อมูลการฝากล่าสุด</p>';
-        return;
+      loader.classList.remove('hidden');
+      container.innerHTML = '';
+      try {
+        const deposits = await callApi('getRecentDeposits');
+        if (!deposits || deposits.length === 0) {
+          container.innerHTML = '<p>ไม่พบข้อมูลการฝากล่าสุด</p>';
+          return;
+        }
+        let tableHTML = '<table class="transaction-table"><thead><tr><th>วันที่</th><th>ชื่อนักเรียน</th><th>จำนวนเงิน</th><th>หมายเหตุ</th></tr></thead><tbody>';
+        deposits.forEach(tx => {
+          tableHTML += `<tr><td>${tx.date}</td><td>${tx.studentName} (${tx.studentId})</td><td class="text-success">+${parseFloat(tx.amount).toLocaleString('th-TH',{minimumFractionDigits:2})}</td><td>${tx.note || ''}</td></tr>`;
+        });
+        tableHTML += '</tbody></table>';
+        container.innerHTML = tableHTML;
+      } catch (error) {
+        container.innerHTML = `<p style="color:red">โหลดข้อมูลการฝากล่าสุดไม่สำเร็จ: ${error.message}</p>`;
+      } finally {
+        loader.classList.add('hidden');
       }
-
-      let tableHTML = '<table class="transaction-table"><thead><tr><th>วันที่</th><th>ชื่อนักเรียน</th><th>จำนวนเงิน</th><th>หมายเหตุ</th></tr></thead><tbody>';
-      deposits.forEach(tx => {
-        tableHTML += `<tr>
-          <td>${tx.date}</td>
-          <td>${tx.studentName} (${tx.studentId})</td>
-          <td class="text-success">+${parseFloat(tx.amount).toLocaleString('th-TH',{minimumFractionDigits:2})}</td>
-          <td>${tx.note || ''}</td>
-        </tr>`;
-      });
-      tableHTML += '</tbody></table>';
-      container.innerHTML = tableHTML;
     }
 
-    function handleAdminSearchTransactions(event) {
+    async function handleAdminSearchTransactions(event) {
       event.preventDefault();
       const studentId = document.getElementById('admin-search-student-id').value;
       const loader = document.getElementById('admin-tx-loader');
@@ -641,37 +665,29 @@
       statusP.textContent = '';
       resultsDiv.innerHTML = '';
 
-      google.script.run
-        .withSuccessHandler(transactions => {
-          loader.classList.add('hidden');
-          if (transactions.length === 0) {
-            statusP.textContent = 'ไม่พบประวัติการทำธุรกรรมสำหรับรหัสนักเรียนนี้';
-            return;
-          }
-
-          let tableHTML = '<table class="transaction-table"><thead><tr><th>วันที่</th><th>รายการ</th><th>จำนวนเงิน</th><th>หมายเหตุ</th></tr></thead><tbody>';
-          transactions.forEach(tx => {
-            const amountClass = tx.type === 'ฝาก' ? 'text-success' : 'text-danger';
-            const amountSign = tx.type === 'ฝาก' ? '+' : '-';
-            tableHTML += `<tr>
-              <td>${tx.date}</td>
-              <td>${tx.type}</td>
-              <td class="${amountClass}">${amountSign}${parseFloat(tx.amount).toLocaleString('th-TH',{minimumFractionDigits:2})}</td>
-              <td>${tx.note || ''}</td>
-            </tr>`;
-          });
-          tableHTML += '</tbody></table>';
-          resultsDiv.innerHTML = tableHTML;
-        })
-        .withFailureHandler(err => {
-          loader.classList.add('hidden');
-          statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
-          statusP.style.color = 'red';
-        })
-        .getTransactions(studentId);
+      try {
+        const transactions = await callApi('getTransactions', { studentId });
+        if (transactions.length === 0) {
+          statusP.textContent = 'ไม่พบประวัติการทำธุรกรรมสำหรับรหัสนักเรียนนี้';
+          return;
+        }
+        let tableHTML = '<table class="transaction-table"><thead><tr><th>วันที่</th><th>รายการ</th><th>จำนวนเงิน</th><th>หมายเหตุ</th></tr></thead><tbody>';
+        transactions.forEach(tx => {
+          const amountClass = tx.type === 'ฝาก' ? 'text-success' : 'text-danger';
+          const amountSign = tx.type === 'ฝาก' ? '+' : '-';
+          tableHTML += `<tr><td>${tx.date}</td><td>${tx.type}</td><td class="${amountClass}">${amountSign}${parseFloat(tx.amount).toLocaleString('th-TH',{minimumFractionDigits:2})}</td><td>${tx.note || ''}</td></tr>`;
+        });
+        tableHTML += '</tbody></table>';
+        resultsDiv.innerHTML = tableHTML;
+      } catch (err) {
+        statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
+        statusP.style.color = 'red';
+      } finally {
+        loader.classList.add('hidden');
+      }
     }
 
-    function handleStartNewSemester() {
+    async function handleStartNewSemester() {
       const confirmation = prompt('คำเตือน! การกระทำนี้จะรีเซ็ตระดับและของรางวัลทั้งหมด และไม่สามารถย้อนกลับได้ หากคุณแน่ใจ พิมพ์ "CONFIRM" แล้วกด OK');
       if (confirmation !== 'CONFIRM') {
         alert('การดำเนินการถูกยกเลิก');
@@ -683,25 +699,35 @@
       statusP.style.color = 'black';
       startSemesterBtn.disabled = true;
 
-      google.script.run
-        .withSuccessHandler(response => {
-          statusP.textContent = response.message;
-          statusP.style.color = 'green';
-          alert(response.message);
-          startSemesterBtn.disabled = false;
-        })
-        .withFailureHandler(err => {
-          statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
-          statusP.style.color = 'red';
-          startSemesterBtn.disabled = false;
-        })
-        .startNewSemester(currentLoggedInUser.id);
+      try {
+        const response = await callApi('startNewSemester', { adminId: currentLoggedInUser.id });
+        statusP.textContent = response.message;
+        statusP.style.color = 'green';
+        alert(response.message);
+      } catch (err) {
+        statusP.textContent = `เกิดข้อผิดพลาด: ${err.message}`;
+        statusP.style.color = 'red';
+      } finally {
+        startSemesterBtn.disabled = false;
+      }
     }
 
-    bulkTransactionForm.addEventListener('submit', handleBulkSubmit);
-    claimRewardBtn.addEventListener('click', handleClaimReward);
-    adminSearchTxForm.addEventListener('submit', handleAdminSearchTransactions);
-    startSemesterBtn.addEventListener('click', handleStartNewSemester);
+    // --- Event Listeners ---
+    document.addEventListener('DOMContentLoaded', () => {
+        loginForm.addEventListener('submit', handleLogin);
+        setPasswordForm.addEventListener('submit', handleSetNewPassword);
+        addTransactionForm.addEventListener('submit', handleAddTransaction);
+        resetPasswordForm.addEventListener('submit', handleAdminResetPassword);
+        logoutBtn.addEventListener('click', handleLogout);
+        exportExcelBtn.addEventListener('click', handleExportExcel);
+        exportPdfBtn.addEventListener('click', handleExportPdf);
+        addRowBtn.addEventListener('click', handleAddRow);
+        bulkTransactionForm.addEventListener('submit', handleBulkSubmit);
+        claimRewardBtn.addEventListener('click', handleClaimReward);
+        adminSearchTxForm.addEventListener('submit', handleAdminSearchTransactions);
+        startSemesterBtn.addEventListener('click', handleStartNewSemester);
+    });
+
   </script>
 </body>
 </html>
