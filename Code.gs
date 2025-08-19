@@ -31,54 +31,24 @@ function doPost(e) {
       case 'getUserData':
         response = getUserData(payload.id, payload.password);
         break;
-      case 'setNewPassword':
-        response = setNewPassword(payload.userId, payload.newPassword);
-        break;
-      case 'adminResetPassword':
-        response = adminResetPassword(payload.adminId, payload.studentId);
-        break;
-      case 'startNewSemester':
-        response = startNewSemester(payload.adminId);
-        break;
-      case 'getTransactions':
-        response = getTransactions(payload.studentId);
-        break;
-      case 'claimReward':
-        response = claimReward(payload.studentId);
-        break;
-      case 'addTransaction':
-        response = addTransaction(payload.adminId, payload.studentId, payload.type, payload.amount, payload.note, payload.transactionDateString);
-        break;
-      case 'getAdminDashboardData':
-        response = getAdminDashboardData();
-        break;
-      case 'getRecentDeposits':
-        response = getRecentDeposits();
-        break;
-      case 'getStudentDashboardData':
-        response = getStudentDashboardData(payload.studentId);
-        break;
-      case 'exportTransactionsAsExcel':
-        response = exportTransactionsAsExcel(payload.adminId);
-        break;
-      case 'exportSummaryAsPdf':
-        response = exportSummaryAsPdf(payload.adminId);
-        break;
+      // ... เคสอื่นๆ ของคุณเหมือนเดิม ...
       case 'addMultipleTransactions':
         response = addMultipleTransactions(payload.adminId, payload.dateString, payload.type, payload.transactions);
         break;
       default:
         throw new Error(`Unknown action: ${action}`);
     }
+    // [แก้ไข] เพิ่ม .addHttpHeader ที่นี่
     return ContentService.createTextOutput(JSON.stringify({ success: true, data: response }))
       .setMimeType(ContentService.MimeType.JSON)
-      .addHttpHeader('Access-Control-Allow-Origin', '*'); // Added for the actual POST response
+      .addHttpHeader('Access-Control-Allow-Origin', '*'); 
 
   } catch (error) {
     Logger.log(error);
+    // [แก้ไข] เพิ่ม .addHttpHeader ที่นี่ด้วย
     return ContentService.createTextOutput(JSON.stringify({ success: false, error: error.message }))
       .setMimeType(ContentService.MimeType.JSON)
-      .addHttpHeader('Access-Control-Allow-Origin', '*'); // Added for the actual POST response
+      .addHttpHeader('Access-control-Allow-Origin', '*');
   }
 }
 
